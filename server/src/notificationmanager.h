@@ -115,7 +115,6 @@ class NotificationManager : public QObject, protected QDBusContext
 
     static NotificationManager *mSelf;
     NotificationMessageV3::List mNotifications;
-    QTimer mTimer;
 
     //! One message source for each subscribed process
     QHash<QString, NotificationSource *> mNotificationSources;

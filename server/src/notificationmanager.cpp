@@ -53,10 +53,6 @@ NotificationManager::NotificationManager()
 
   const QString serverConfigFile = AkStandardDirs::serverConfigFile( XdgBaseDirs::ReadWrite );
   QSettings settings( serverConfigFile, QSettings::IniFormat );
-
-  mTimer.setInterval( settings.value( QLatin1String( "NotificationManager/Interval" ), 50 ).toInt() );
-  mTimer.setSingleShot( true );
-  connect( &mTimer, SIGNAL(timeout()), SLOT(emitPendingNotifications()) );
 }
 
 NotificationManager::~NotificationManager()
@@ -85,9 +81,7 @@ void NotificationManager::slotNotify( const Akonadi::NotificationMessageV3::List
     NotificationMessageV3::appendAndCompress( mNotifications, msg );
   //akDebug() << Q_FUNC_INFO << "We have" << mNotifications.count() << "notifications queued in total after appendAndCompress()";
 
-  if ( !mTimer.isActive() ) {
-    mTimer.start();
-  }
+  emitPendingNotifications();
 }
 
 void NotificationManager::emitPendingNotifications()
