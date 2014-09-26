@@ -57,12 +57,14 @@ NotificationMessageV2::List NotificationMessageV3::toV2List( const NotificationM
 
 bool NotificationMessageV3::appendAndCompress( NotificationMessageV3::List &list, const NotificationMessageV3 &msg )
 {
-  return NotificationMessageHelpers::appendAndCompressImpl<NotificationMessageV3::List, NotificationMessageV3>( list, msg );
+  list.append(msg);
+  return true;
 }
 
 bool NotificationMessageV3::appendAndCompress( QList<NotificationMessageV3> &list, const NotificationMessageV3 &msg )
 {
-  return NotificationMessageHelpers::appendAndCompressImpl<QList<NotificationMessageV3>, NotificationMessageV3>( list, msg );
+  list.append(msg);
+  return true;
 }
 
 const QDBusArgument &operator>>( const QDBusArgument &arg, NotificationMessageV3 &msg )
