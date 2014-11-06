@@ -98,6 +98,7 @@ bool DbConfigPostgresql::init( QSettings &settings )
   if ( mHostName.isEmpty() ) {
     mHostName = defaultHostName;
   }
+  mHostPort = settings.value(QLatin1String( "Port" )).toInt();
   // User, password and Options can be empty and still valid, so don't override them
   mUserName = settings.value( QLatin1String( "User" ) ).toString();
   mPassword = settings.value( QLatin1String( "Password" ) ).toString();
@@ -120,6 +121,8 @@ bool DbConfigPostgresql::init( QSettings &settings )
   settings.beginGroup( driverName() );
   settings.setValue( QLatin1String( "Name" ), mDatabaseName );
   settings.setValue( QLatin1String( "Host" ), mHostName );
+  if (mHostPort)
+    settings.setValue(QLatin1String( "Port" ), mHostPort);
   settings.setValue( QLatin1String( "Options" ), mConnectionOptions );
   settings.setValue( QLatin1String( "ServerPath" ), mServerPath );
   settings.setValue( QLatin1String( "InitDbPath" ), mInitDbPath );
@@ -138,6 +141,8 @@ void DbConfigPostgresql::apply( QSqlDatabase &database )
   if ( !mHostName.isEmpty() ) {
     database.setHostName( mHostName );
   }
+  if ( mHostPort > 0 && mHostPort < 65535)
+    database.setPort(mHostPort);
   if ( !mUserName.isEmpty() ) {
     database.setUserName( mUserName );
   }

@@ -77,6 +77,7 @@ class DbConfigPostgresql : public DbConfig
 
     QString mDatabaseName;
     QString mHostName;
+    int     mHostPort;
     QString mUserName;
     QString mPassword;
     QString mConnectionOptions;
