@@ -1,16 +1,21 @@
+%define git_repo akonadi
+%define git_head HEAD
+
 %define soprano_version 2.7
 
 %define rel 1
 
-Name: akonadi
+Name:		akonadi
 Summary: An extensible cross-desktop storage service for PIM
-Version: 1.11.0
-Release: %mkrel %{rel}
+Version:	%git_get_ver
+Release:	%mkrel %git_get_rel2
 Epoch: 1
 Url: http://pim.kde.org/akonadi/
 License: LGPLv2+
 Group: Networking/WWW
-Source0: http://fr2.rpmfind.net/linux/KDE/stable/akonadi/src/%{name}-%{version}.tar.bz2
+Source:		%git_bs_source %{name}-%{version}.tar.gz
+Source1:	%{name}-gitrpm.version
+Source2:	%{name}-changelog.gitrpm.txt
 BuildRequires: pkgconfig(QtCore) < 5.0.0
 BuildRequires: shared-mime-info >=  0.20
 BuildRequires: pkgconfig(soprano) >= %{soprano_version}
@@ -64,7 +69,7 @@ Group:          System/Libraries
 
 %define akonadi_devel %mklibname akonadi -d
 
-%package   -n %akonadi_devel
+%package -n %akonadi_devel
 Summary:   Devel stuff for %name
 Group:     Development/KDE and Qt
 Obsoletes:  akonadi-devel < 1:1.6.90
@@ -72,7 +77,7 @@ Requires:  akonadi = %epoch:%version
 Requires:  %libakonadiprotocolinternals = %epoch:%version
 Provides:  akonadi-devel = %epoch:%version-%release
 
-%description  -n %akonadi_devel
+%description -n %akonadi_devel
 This package contains header files needed if you wish to build applications
 based on %name
 
@@ -85,6 +90,7 @@ based on %name
 #------------------------------------------------------------------------------
 
 %prep
+%git_get_source
 %setup -q
 
 %build
