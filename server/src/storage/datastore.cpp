@@ -92,7 +92,8 @@ DataStore::DataStore()
 
 DataStore::~DataStore()
 {
-  close();
+  if (m_dbOpened)
+    close();
 }
 
 void DataStore::open()
@@ -118,6 +119,13 @@ void DataStore::open()
   DbConfig::configuredDatabase()->initSession( m_database );
 }
 
+QSqlDatabase DataStore::database()
+{
+    if (!m_dbOpened)
+        open();
+    return m_database;
+}
+
 void DataStore::close()
 {
 
@@ -140,6 +148,7 @@ void DataStore::close()
   m_database.close();
   m_database = QSqlDatabase();
   QSqlDatabase::removeDatabase( m_connectionName );
+  m_transactionQueries.clear();
 
   m_dbOpened = false;
 }

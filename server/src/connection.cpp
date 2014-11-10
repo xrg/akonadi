@@ -40,6 +40,8 @@
 
 #define AKONADI_PROTOCOL_VERSION "37"
 
+#define IDLE_TIMER_TIMEOUT 600000 // 5 min
+
 using namespace Akonadi::Server;
 
 Connection::Connection( quintptr socketDescriptor, QObject *parent )
@@ -52,12 +54,14 @@ Connection::Connection( quintptr socketDescriptor, QObject *parent )
     , m_selectedConnection( 0 )
     , m_streamParser( 0 )
     , m_verifyCacheOnRetrieval( false )
+    , m_idleTimer(0)
 {
     m_identifier.sprintf( "%p", static_cast<void *>( this ) );
     ClientCapabilityAggregator::addSession( m_clientCapabilities );
 
     const QSettings settings( AkStandardDirs::serverConfigFile(), QSettings::IniFormat );
     m_verifyCacheOnRetrieval = settings.value( QLatin1String( "Cache/VerifyOnRetrieval" ), m_verifyCacheOnRetrieval ).toBool();
+    m_idleTimer = new QTimer(this);
 }
 
 DataStore *Connection::storageBackend()
@@ -101,6 +105,8 @@ void Connection::run()
              this, SLOT(slotNewData()), Qt::DirectConnection );
     connect( m_socket, SIGNAL(disconnected()),
              this, SLOT(slotDisconnected()), Qt::DirectConnection );
+    connect( m_idleTimer, SIGNAL(timeout()),
+             this, SLOT(slotConnectionIdle()), Qt::DirectConnection );
 
     m_streamParser = new ImapStreamParser( m_socket );
     m_streamParser->setTracerIdentifier( m_identifier );
@@ -124,7 +130,19 @@ void Connection::run()
 
 void Connection::slotDisconnected()
 {
+    m_idleTimer->stop();
     quit();
+}
+
+void Connection::slotConnectionIdle()
+{
+    if (m_backend && m_backend->isOpened() && !m_currentHandler) {
+        akDebug() << "Closing idle db connection" << 
+                (m_backend->inTransaction()? " IN TRANSACTION!" : " not in transaction");
+        m_backend->close();
+        m_backend = 0;
+        akDebug() << "Closed idle db connection";
+    }
 }
 
 void Connection::slotNewData()
@@ -132,6 +150,15 @@ void Connection::slotNewData()
   // On Windows, calling readLiteralPart() triggers the readyRead() signal recursively and leads to parse errors
   if ( m_currentHandler ) {
     return;
+  }
+
+  if (m_idleTimer->isActive())
+    m_idleTimer->stop();
+
+  // will only open() a previously idle backend.
+  // Otherwise, a new backend could lazily be constructed by later calls.
+  if (!DataStore::self()->isOpened()) {
+        DataStore::self()->open();
   }
 
   while ( m_socket->bytesAvailable() > 0 || !m_streamParser->readRemainingData().isEmpty() ) {
@@ -188,6 +215,9 @@ void Connection::slotNewData()
       } catch ( ... ) {}
     }
   }
+
+  // reset, arm the timer
+  m_idleTimer->start(IDLE_TIMER_TIMEOUT);
 }
 
 void Connection::writeOut( const QByteArray &data )

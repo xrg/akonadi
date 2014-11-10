@@ -21,6 +21,7 @@
 
 #include <QtCore/QPointer>
 #include <QtCore/QThread>
+#include <QtCore/QTimer>
 #include <QtNetwork/QLocalSocket>
 
 #include "entities.h"
@@ -81,6 +82,7 @@ protected Q_SLOTS:
     void slotNewData();
     void slotResponseAvailable( const Akonadi::Server::Response &response );
     void slotConnectionStateChange( ConnectionState );
+    void slotConnectionIdle();
 
 protected:
     Connection() {} // used for testing
@@ -101,6 +103,7 @@ private:
     Resource m_resourceContext;
     ClientCapabilities m_clientCapabilities;
     bool m_verifyCacheOnRetrieval;
+    QTimer *m_idleTimer;
 };
 
 } // namespace Server
