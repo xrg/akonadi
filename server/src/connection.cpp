@@ -41,6 +41,8 @@
 
 #define AKONADI_PROTOCOL_VERSION 44
 
+#define IDLE_TIMER_TIMEOUT 600000 // 10 min
+
 using namespace Akonadi::Server;
 
 Connection::Connection( QObject *parent )
@@ -91,6 +93,8 @@ Connection::Connection( quintptr socketDescriptor, QObject *parent )
              this, SLOT(slotNewData()) );
     connect( socket, SIGNAL(disconnected()),
              this, SIGNAL(disconnected()) );
+    connect( &m_idleTimer, SIGNAL(timeout()),
+             this, SLOT(slotConnectionIdle()));
 
     m_streamParser = new ImapStreamParser( m_socket );
     m_streamParser->setTracerIdentifier( m_identifier );
@@ -133,6 +137,18 @@ Connection::~Connection()
     ClientCapabilityAggregator::removeSession( m_clientCapabilities );
     Tracer::self()->endConnection( m_identifier, QString() );
     collectionReferenceManager()->removeSession( m_sessionId );
+    m_idleTimer.stop();
+}
+
+void Connection::slotConnectionIdle()
+{
+    if (m_backend && m_backend->isOpened() && !m_currentHandler) {
+        akDebug() << "Closing idle db connection" << 
+                (m_backend->inTransaction()? " IN TRANSACTION!" : " not in transaction");
+        m_backend->close();
+        m_backend = 0;
+        akDebug() << "Closed idle db connection";
+    }
 }
 
 void Connection::slotNewData()
@@ -140,6 +156,15 @@ void Connection::slotNewData()
   // On Windows, calling readLiteralPart() triggers the readyRead() signal recursively and leads to parse errors
   if ( m_currentHandler ) {
     return;
+  }
+
+  m_idleTimer.stop();
+
+  // will only open() a previously idle backend.
+  // Otherwise, a new backend could lazily be constructed by later calls.
+  if (!DataStore::self()->isOpened()) {
+        akDebug() << "re-open connection";
+        DataStore::self()->open();
   }
 
   while ( m_socket->bytesAvailable() > 0 || !m_streamParser->readRemainingData().isEmpty() ) {
@@ -201,6 +226,9 @@ void Connection::slotNewData()
       } catch ( ... ) {}
     }
   }
+
+  // reset, arm the timer
+  m_idleTimer.start(IDLE_TIMER_TIMEOUT);
 }
 
 void Connection::writeOut( const QByteArray &data )

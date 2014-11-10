@@ -244,13 +244,20 @@ class DataStore : public QObject
 
     /**
       Returns the QSqlDatabase object. Use this for generating queries yourself.
+
+      Will [re-]open the database, if it is closed.
     */
-    QSqlDatabase database() const { return m_database; }
+    QSqlDatabase database();
 
     /**
       Sets the current session id.
     */
     void setSessionId( const QByteArray &sessionId ) { mSessionId = sessionId; }
+
+    /**
+      Returns if the database is currently open
+      */
+    bool isOpened() const { return m_dbOpened ; }
 
 Q_SIGNALS:
     /**

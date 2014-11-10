@@ -89,7 +89,6 @@ QueryBuilder::QueryBuilder( const QString &table, QueryBuilder::QueryType type )
    : mTable( table )
 #ifndef QUERYBUILDER_UNITTEST
    , mDatabaseType( DbType::type( DataStore::self()->database() ) )
-   , mQuery( DataStore::self()->database() )
 #else
    , mDatabaseType( DbType::Unknown )
 #endif
@@ -340,6 +339,7 @@ bool QueryBuilder::exec()
   if ( QueryCache::contains( statement ) ) {
     mQuery = QueryCache::query( statement );
   } else {
+    mQuery = QSqlQuery(DataStore::self()->database()); // reset, connect to db
     mQuery.prepare( statement );
     QueryCache::insert( statement, mQuery );
   }
