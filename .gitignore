@@ -4,3 +4,6 @@
 *.kdev4
 .swp.*
 .*.swp
+CMakeFiles
+CMakeCache.txt
+*_automoc.cpp
