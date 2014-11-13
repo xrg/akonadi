@@ -83,7 +83,6 @@ DataStore::DataStore()
   , mNotificationCollector( 0 )
   , m_keepAliveTimer( 0 )
 {
-  open();
   notificationCollector();
 
   if ( DbConfig::configuredDatabase()->driverName() == QLatin1String( "QMYSQL" ) ) {
