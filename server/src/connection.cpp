@@ -41,7 +41,7 @@
 
 #define AKONADI_PROTOCOL_VERSION 44
 
-#define IDLE_TIMER_TIMEOUT 600000 // 10 min
+#define IDLE_TIMER_TIMEOUT 180000 // 3 min
 
 using namespace Akonadi::Server;
 
