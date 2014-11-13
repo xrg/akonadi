@@ -97,6 +97,11 @@ class DbConfig
     virtual qint64 sizeThreshold() const;
 
     /**
+     * Database backend connections will be closed after being idle for so many seconds
+     */
+    virtual quint32 connectionIdleSecs() const;
+
+    /**
      * This method is called to setup initial database settings after a connection is established.
      */
     virtual void setup();
@@ -113,6 +118,7 @@ class DbConfig
 
   private:
     qint64 mSizeThreshold;
+    quint32 mConnectionIdleSecs;
 };
 
 } // namespace Server

@@ -108,6 +108,7 @@ protected:
     ClientCapabilities m_clientCapabilities;
     bool m_verifyCacheOnRetrieval;
     CommandContext m_context;
+    int m_idleTimerMsecs;
     QTimer m_idleTimer;
 
 };

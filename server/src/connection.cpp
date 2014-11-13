@@ -24,6 +24,7 @@
 #include <QtCore/QLatin1String>
 #include <QSettings>
 
+#include "storage/dbconfig.h"
 #include "storage/datastore.h"
 #include "handler.h"
 #include "response.h"
@@ -41,8 +42,6 @@
 
 #define AKONADI_PROTOCOL_VERSION 44
 
-#define IDLE_TIMER_TIMEOUT 180000 // 3 min
-
 using namespace Akonadi::Server;
 
 Connection::Connection( QObject *parent )
@@ -54,7 +53,9 @@ Connection::Connection( QObject *parent )
     , m_backend( 0 )
     , m_streamParser( 0 )
     , m_verifyCacheOnRetrieval( false )
+    , m_idleTimerMsecs(0)
 {
+    m_idleTimerMsecs = DbConfig::configuredDatabase()->connectionIdleSecs() * 1000;
 }
 
 
@@ -228,7 +229,8 @@ void Connection::slotNewData()
   }
 
   // reset, arm the timer
-  m_idleTimer.start(IDLE_TIMER_TIMEOUT);
+  if (m_idleTimerMsecs)
+    m_idleTimer.start(m_idleTimerMsecs);
 }
 
 void Connection::writeOut( const QByteArray &data )

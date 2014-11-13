@@ -54,6 +54,12 @@ DbConfig::DbConfig()
   if ( mSizeThreshold < 0 ) {
     mSizeThreshold = 0;
   }
+
+  mConnectionIdleSecs = 0;
+  const QVariant value2 = settings.value( QLatin1String( "General/ConnectionIdleSecs" ), mConnectionIdleSecs);
+  if ( value2.canConvert<quint32>() ) {
+    mConnectionIdleSecs = value2.value<quint32>();
+  }
 }
 
 DbConfig::~DbConfig()
@@ -113,6 +119,11 @@ void DbConfig::setup()
 qint64 DbConfig::sizeThreshold() const
 {
   return mSizeThreshold;
+}
+
+quint32 DbConfig::connectionIdleSecs() const
+{
+  return mConnectionIdleSecs;
 }
 
 QString DbConfig::defaultDatabaseName()
