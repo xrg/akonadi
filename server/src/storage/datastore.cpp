@@ -99,8 +99,9 @@ DataStore::DataStore()
 
 DataStore::~DataStore()
 {
-  if (m_dbOpened)
+  if (m_dbOpened){
     close();
+  }
 }
 
 void DataStore::open()
@@ -128,8 +129,9 @@ void DataStore::open()
 
 QSqlDatabase DataStore::database()
 {
-    if (!m_dbOpened)
+    if (!m_dbOpened){
         open();
+    }
     return m_database;
 }
 
