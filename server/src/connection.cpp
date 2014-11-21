@@ -148,7 +148,6 @@ void Connection::slotConnectionIdle()
                 (m_backend->inTransaction()? " IN TRANSACTION!" : " not in transaction");
         m_backend->close();
         m_backend = 0;
-        akDebug() << "Closed idle db connection";
     }
 }
 
@@ -164,7 +163,6 @@ void Connection::slotNewData()
   // will only open() a previously idle backend.
   // Otherwise, a new backend could lazily be constructed by later calls.
   if (!DataStore::self()->isOpened()) {
-        akDebug() << "re-open connection";
         DataStore::self()->open();
   }
 

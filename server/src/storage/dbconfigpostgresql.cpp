@@ -150,7 +150,6 @@ void DbConfigPostgresql::apply( QSqlDatabase &database )
   }
 
   database.setConnectOptions( mConnectionOptions );
-  akDebug() << "Connecting to: " << database.hostName() << ":" << database.port();
 
   // can we check that during init() already?
   Q_ASSERT( database.driver()->hasFeature( QSqlDriver::LastInsertId ) );
