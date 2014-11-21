@@ -143,9 +143,16 @@ Connection::~Connection()
 
 void Connection::slotConnectionIdle()
 {
-    if (m_backend && m_backend->isOpened() && !m_currentHandler) {
-        akDebug() << "Closing idle db connection" << 
-                (m_backend->inTransaction()? " IN TRANSACTION!" : " not in transaction");
+    Q_ASSERT(m_currentHandler == 0);
+    if (m_backend && m_backend->isOpened() ) {
+        if (m_backend->inTransaction()) {
+            // This is a programming error, the timer should not have fired.
+            // But it is safer to abort and leave the connection open, until
+            // a later operation causes the idle timer to fire (than crash
+            // the akonadi server).
+            akDebug() << "NOT Closing idle db connection; we are in transaction";
+            return;
+        }
         m_backend->close();
     }
 }
