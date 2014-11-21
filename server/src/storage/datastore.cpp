@@ -155,7 +155,6 @@ void DataStore::close()
   m_database.close();
   m_database = QSqlDatabase();
   QSqlDatabase::removeDatabase( m_connectionName );
-  m_transactionQueries.clear();
 
   m_dbOpened = false;
 }

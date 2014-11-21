@@ -147,7 +147,6 @@ void Connection::slotConnectionIdle()
         akDebug() << "Closing idle db connection" << 
                 (m_backend->inTransaction()? " IN TRANSACTION!" : " not in transaction");
         m_backend->close();
-        m_backend = 0;
     }
 }
 
