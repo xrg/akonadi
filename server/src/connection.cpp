@@ -168,8 +168,8 @@ void Connection::slotNewData()
 
   // will only open() a previously idle backend.
   // Otherwise, a new backend could lazily be constructed by later calls.
-  if (!DataStore::self()->isOpened()) {
-        DataStore::self()->open();
+  if (!storageBackend()->isOpened()) {
+        m_backend->open();
   }
 
   while ( m_socket->bytesAvailable() > 0 || !m_streamParser->readRemainingData().isEmpty() ) {
