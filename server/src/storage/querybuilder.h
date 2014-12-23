@@ -70,7 +70,9 @@ class QueryBuilder
       WhereCondition,
       /// add condition to HAVING part of the query
       /// NOTE: only supported for SELECT queries
-      HavingCondition
+      HavingCondition,
+
+      NUM_CONDITIONS
     };
 
     /**
@@ -121,11 +123,24 @@ class QueryBuilder
     void addColumn( const QString &col );
 
     /**
+     * Adds the given case statement to a select query.
+     * @param caseStmt The case statement to add.
+     */
+    void addColumn( const Query::Case &caseStmt );
+
+    /**
      * Adds an aggregation statement.
      * @param col The column to aggregate on
      * @param aggregate The aggregation function.
      */
     void addAggregation( const QString &col, const QString &aggregate );
+
+    /**
+     * Adds and aggregation statement with CASE
+     * @param caseStmt The case statement to aggregate on
+     * @param aggregate The aggregation function.
+     */
+    void addAggregation( const Query::Case &caseStmt, const QString &aggregate );
 
     /**
       Add a WHERE or HAVING condition which compares a column with a given value.
@@ -234,9 +249,10 @@ class QueryBuilder
     qint64 insertId();
 
   private:
-    QString buildQuery();
-    QString bindValue( const QVariant &value );
-    QString buildWhereCondition( const Query::Condition &cond );
+    void buildQuery( QString *query );
+    void bindValue( QString *query, const QVariant &value );
+    void buildWhereCondition( QString *query, const Query::Condition &cond );
+    void buildCaseStatement( QString *query, const Query::Case &caseStmt );
 
     /**
      * SQLite does not support JOINs with UPDATE, so we have to convert it into
@@ -249,11 +265,11 @@ class QueryBuilder
   private:
     QString mTable;
     DbType::Type mDatabaseType;
-    QHash<ConditionType, Query::Condition> mRootCondition;
+    Query::Condition mRootCondition[NUM_CONDITIONS];
     QSqlQuery mQuery;
     QueryType mType;
     QStringList mColumns;
-    QList<QVariant> mBindValues;
+    QVector<QVariant> mBindValues;
     QVector<QPair<QString, Query::SortOrder> > mSortColumns;
     QStringList mGroupColumns;
     QVector<QPair<QString, QVariant> > mColumnValues;

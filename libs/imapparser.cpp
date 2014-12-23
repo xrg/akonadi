@@ -79,6 +79,8 @@ int parseParenthesizedListHelper( const QByteArray &data, T &result, int start )
     return start;
   }
 
+  result.reserve(16);
+
   int count = 0;
   int sublistBegin = start;
   bool insideQuote = false;
@@ -186,6 +188,7 @@ int ImapParser::parseQuotedString( const QByteArray &data, QByteArray &result, i
   // quoted string
   if ( data[begin] == '"' ) {
     ++begin;
+    result.reserve(qMin(32, data.size() - begin));
     for ( int i = begin; i < data.length(); ++i ) {
       const char ch = data.at( i );
       if ( foundSlash ) {
@@ -364,7 +367,8 @@ int ImapParser::parseNumber( const QByteArray &data, qint64 &result, bool *ok, i
 QByteArray ImapParser::quote( const QByteArray &data )
 {
   if ( data.isEmpty() ) {
-    return QByteArray( "\"\"" );
+    static const QByteArray empty( "\"\"" );
+    return empty;
   }
 
   const int inputLength = data.length();
@@ -499,7 +503,7 @@ int ImapParser::parseDateTime( const QByteArray &data, QDateTime &dateTime, int 
   }
 
   pos += 3;
-  const QByteArray shortMonthNames( "janfebmaraprmayjunjulaugsepoctnovdec" );
+  static const QByteArray shortMonthNames( "janfebmaraprmayjunjulaugsepoctnovdec" );
   int month = shortMonthNames.indexOf( data.mid( pos, 3 ).toLower() );
   if ( month == -1 ) {
     return start;

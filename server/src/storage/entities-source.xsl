@@ -99,7 +99,7 @@ class <xsl:value-of select="$className"/>::Private : public QSharedData
     static void addToCache( const <xsl:value-of select="$className"/> &amp; entry );
 
     // cache
-    static bool cacheEnabled;
+    static QAtomicInt cacheEnabled;
     static QMutex cacheMutex;
     <xsl:if test="column[@name = 'id']">
     static QHash&lt;qint64, <xsl:value-of select="$className"/> &gt; idCache;
@@ -111,7 +111,7 @@ class <xsl:value-of select="$className"/>::Private : public QSharedData
 
 
 // static members
-bool <xsl:value-of select="$className"/>::Private::cacheEnabled = false;
+QAtomicInt <xsl:value-of select="$className"/>::Private::cacheEnabled(0);
 QMutex <xsl:value-of select="$className"/>::Private::cacheMutex;
 <xsl:if test="column[@name = 'id']">
 QHash&lt;qint64, <xsl:value-of select="$className"/> &gt; <xsl:value-of select="$className"/>::Private::idCache;
@@ -125,14 +125,21 @@ void <xsl:value-of select="$className"/>::Private::addToCache( const <xsl:value-
 {
   Q_ASSERT( cacheEnabled );
   Q_UNUSED( entry ); <!-- in case the table has neither an id nor name column -->
-  cacheMutex.lock();
+  QMutexLocker lock(&amp;cacheMutex);
   <xsl:if test="column[@name = 'id']">
   idCache.insert( entry.id(), entry );
   </xsl:if>
   <xsl:if test="column[@name = 'name']">
+    <xsl:choose>
+     <xsl:when test="$className = 'PartType'">
+      <!-- special case for PartType, which is identified as "NS:NAME" -->
+  nameCache.insert( entry.ns() + QLatin1Char(':') + entry.name(), entry );
+      </xsl:when>
+      <xsl:otherwise>
   nameCache.insert( entry.name(), entry );
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:if>
-  cacheMutex.unlock();
 }
 
 
@@ -214,36 +221,41 @@ void <xsl:value-of select="$className"/>::<xsl:call-template name="setter-signat
 // SQL table information
 <xsl:text>QString </xsl:text><xsl:value-of select="$className"/>::tableName()
 {
-  return QLatin1String( "<xsl:value-of select="$tableName"/>" );
+  static const QString tableName = QLatin1String( "<xsl:value-of select="$tableName"/>" );
+  return tableName;
 }
 
 QStringList <xsl:value-of select="$className"/>::columnNames()
 {
-  QStringList rv;
+  static const QStringList columns = QStringList()
   <xsl:for-each select="column">
-  rv.append( QLatin1String( "<xsl:value-of select="@name"/>" ) );
+    &lt;&lt; <xsl:value-of select="@name"/>Column()
   </xsl:for-each>
-  return rv;
+  ;
+  return columns;
 }
 
 QStringList <xsl:value-of select="$className"/>::fullColumnNames()
 {
-  QStringList rv;
+  static const QStringList columns = QStringList()
   <xsl:for-each select="column">
-  rv.append( QLatin1String( "<xsl:value-of select="$tableName"/>.<xsl:value-of select="@name"/>" ) );
+    &lt;&lt; <xsl:value-of select="@name"/>FullColumnName()
   </xsl:for-each>
-  return rv;
+  ;
+  return columns;
 }
 
 <xsl:for-each select="column">
 QString <xsl:value-of select="$className"/>::<xsl:value-of select="@name"/>Column()
 {
-  return QLatin1String( "<xsl:value-of select="@name"/>" );
+  static const QString column = QLatin1String( "<xsl:value-of select="@name"/>" );
+  return column;
 }
 
 QString <xsl:value-of select="$className"/>::<xsl:value-of select="@name"/>FullColumnName()
 {
-  return tableName() + QLatin1String( ".<xsl:value-of select="@name"/>" );
+  static const QString column = QLatin1String( "<xsl:value-of select="$tableName"/>.<xsl:value-of select="@name"/>" );
+  return column;
 }
 </xsl:for-each>
 
@@ -259,12 +271,10 @@ int <xsl:value-of select="$className"/>::count( const QString &amp;column, const
 bool <xsl:value-of select="$className"/>::exists( qint64 id )
 {
   if ( Private::cacheEnabled ) {
-    Private::cacheMutex.lock();
+    QMutexLocker lock(&amp;Private::cacheMutex);
     if ( Private::idCache.contains( id ) ) {
-      Private::cacheMutex.unlock();
       return true;
     }
-    Private::cacheMutex.unlock();
   }
   return count( idColumn(), id ) > 0;
 }
@@ -273,12 +283,10 @@ bool <xsl:value-of select="$className"/>::exists( qint64 id )
 bool <xsl:value-of select="$className"/>::exists( const <xsl:value-of select="column[@name = 'name']/@type"/> &amp;name )
 {
   if ( Private::cacheEnabled ) {
-    Private::cacheMutex.lock();
+    QMutexLocker lock(&amp;Private::cacheMutex);
     if ( Private::nameCache.contains( name ) ) {
-      Private::cacheMutex.unlock();
       return true;
     }
-    Private::cacheMutex.unlock();
   }
   return count( nameColumn(), name ) > 0;
 }
@@ -323,11 +331,24 @@ QVector&lt; <xsl:value-of select="$className"/> &gt; <xsl:value-of select="$clas
 }
 
 </xsl:if>
-<xsl:if test="column[@name = 'name']">
+<xsl:if test="column[@name = 'name'] and $className != 'PartType'">
 <xsl:value-of select="$className"/><xsl:text> </xsl:text><xsl:value-of select="$className"/>::retrieveByName( const <xsl:value-of select="column[@name = 'name']/@type"/> &amp;name )
 {
   <xsl:call-template name="data-retrieval">
   <xsl:with-param name="key">name</xsl:with-param>
+  <xsl:with-param name="cache">nameCache</xsl:with-param>
+  </xsl:call-template>
+}
+</xsl:if>
+
+<xsl:if test="column[@name = 'name'] and $className = 'PartType'">
+<xsl:text>PartType PartType::retrieveByFQName( const QString &amp; ns, const QString &amp; name )</xsl:text>
+{
+  const QString fqname = ns + QLatin1Char(':') + name;
+  <xsl:call-template name="data-retrieval">
+  <xsl:with-param name="key">ns</xsl:with-param>
+  <xsl:with-param name="key2">name</xsl:with-param>
+  <xsl:with-param name="lookupKey">fqname</xsl:with-param>
   <xsl:with-param name="cache">nameCache</xsl:with-param>
   </xsl:call-template>
 }
@@ -399,7 +420,6 @@ QVector&lt;<xsl:value-of select="@table"/>&gt; <xsl:value-of select="$className"
 <xsl:variable name="relationName"><xsl:value-of select="@table1"/><xsl:value-of select="@table2"/>Relation</xsl:variable>
 <xsl:variable name="rightSideClass"><xsl:value-of select="@table2"/></xsl:variable>
 <xsl:variable name="rightSideEntity"><xsl:value-of select="@table2"/></xsl:variable>
-<xsl:variable name="rightSideTable"><xsl:value-of select="@table2"/>Table</xsl:variable>
 
 // data retrieval for n:m relations
 QVector&lt;<xsl:value-of select="$rightSideClass"/>&gt; <xsl:value-of select="$className"/>::<xsl:value-of select="concat(translate(substring(@table2,1,1),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), substring(@table2,2))"/>s() const
@@ -408,14 +428,17 @@ QVector&lt;<xsl:value-of select="$rightSideClass"/>&gt; <xsl:value-of select="$c
   if ( !db.isOpen() )
     return QVector&lt;<xsl:value-of select="$rightSideClass"/>&gt;();
 
-  QueryBuilder qb( QLatin1String("<xsl:value-of select="$rightSideTable"/>"), QueryBuilder::Select );
+  QueryBuilder qb( <xsl:value-of select="$rightSideClass"/>::tableName(), QueryBuilder::Select );
+  static const QStringList columns = QStringList()
   <xsl:for-each select="/database/table[@name = $rightSideEntity]/column">
-    qb.addColumn( QLatin1String("<xsl:value-of select="$rightSideTable"/>.<xsl:value-of select="@name"/>" ) );
+    &lt;&lt; <xsl:value-of select="$rightSideClass"/>::<xsl:value-of select="@name"/>FullColumnName()
   </xsl:for-each>
-  qb.addJoin( QueryBuilder::InnerJoin, QLatin1String("<xsl:value-of select="$relationName"/>"),
-              QLatin1String("<xsl:value-of select="$relationName"/>.<xsl:value-of select="@table2"/>_<xsl:value-of select="@column2"/>"),
-              QLatin1String("<xsl:value-of select="$rightSideTable"/>.<xsl:value-of select="@column2"/>") );
-  qb.addValueCondition( QLatin1String("<xsl:value-of select="$relationName"/>.<xsl:value-of select="@table1"/>_<xsl:value-of select="@column1"/>"), Query::Equals, id() );
+  ;
+  qb.addColumns(columns);
+  qb.addJoin( QueryBuilder::InnerJoin, <xsl:value-of select="$relationName"/>::tableName(),
+              <xsl:value-of select="$relationName"/>::rightFullColumnName(),
+              <xsl:value-of select="$rightSideClass"/>::<xsl:value-of select="@column2"/>FullColumnName() );
+  qb.addValueCondition( <xsl:value-of select="$relationName"/>::leftFullColumnName(), Query::Equals, id() );
 
   if ( !qb.exec() ) {
     akDebug() &lt;&lt; "Error during selection of records from table <xsl:value-of select="@table1"/><xsl:value-of select="@table2"/>Relation"
@@ -546,7 +569,7 @@ bool <xsl:value-of select="$className"/>::update()
   </xsl:for-each>
 
   <xsl:if test="column[@name = 'id']">
-  qb.addValueCondition( QLatin1String("id"), Query::Equals, id() );
+  qb.addValueCondition( idColumn(), Query::Equals, id() );
   </xsl:if>
 
   if ( !qb.exec() ) {
@@ -581,28 +604,34 @@ bool <xsl:value-of select="$className"/>::remove( qint64 id )
 void <xsl:value-of select="$className"/>::invalidateCache() const
 {
   if ( Private::cacheEnabled ) {
-    Private::cacheMutex.lock();
+    QMutexLocker lock(&amp;Private::cacheMutex);
     <xsl:if test="column[@name = 'id']">
     Private::idCache.remove( id() );
     </xsl:if>
     <xsl:if test="column[@name = 'name']">
+      <xsl:choose>
+        <xsl:when test="$className = 'PartType'">
+        <!-- Special handling for PartType, which is identified as "NS:NAME" -->
+    Private::nameCache.remove( ns() + QLatin1Char(':') + name() );
+        </xsl:when>
+        <xsl:otherwise>
     Private::nameCache.remove( name() );
+        </xsl:otherwise>
+      </xsl:choose>
     </xsl:if>
-    Private::cacheMutex.unlock();
   }
 }
 
 void <xsl:value-of select="$className"/>::invalidateCompleteCache()
 {
   if ( Private::cacheEnabled ) {
-    Private::cacheMutex.lock();
+    QMutexLocker lock(&amp;Private::cacheMutex);
     <xsl:if test="column[@name = 'id']">
     Private::idCache.clear();
     </xsl:if>
     <xsl:if test="column[@name = 'name']">
     Private::nameCache.clear();
     </xsl:if>
-    Private::cacheMutex.unlock();
   }
 }
 
@@ -622,27 +651,32 @@ void <xsl:value-of select="$className"/>::enableCache( bool enable )
 // SQL table information
 QString <xsl:value-of select="$className"/>::tableName()
 {
-  return QLatin1String( "<xsl:value-of select="$tableName"/>" );
+  static const QString table = QLatin1String( "<xsl:value-of select="$tableName"/>" );
+  return table;
 }
 
 QString <xsl:value-of select="$className"/>::leftColumn()
 {
-  return QLatin1String( "<xsl:value-of select="@table1"/>_<xsl:value-of select="@column1"/>" );
+  static const QString column = QLatin1String( "<xsl:value-of select="@table1"/>_<xsl:value-of select="@column1"/>" );
+  return column;
 }
 
 QString <xsl:value-of select="$className"/>::leftFullColumnName()
 {
-  return tableName() + QLatin1String( "." ) + leftColumn();
+  static const QString column = QLatin1String( "<xsl:value-of select="$tableName"/>.<xsl:value-of select="@table1"/>_<xsl:value-of select="@column1"/>" );
+  return column;
 }
 
 QString <xsl:value-of select="$className"/>::rightColumn()
 {
-  return QLatin1String( "<xsl:value-of select="@table2"/>_<xsl:value-of select="@column2"/>" );
+  static const QString column = QLatin1String( "<xsl:value-of select="@table2"/>_<xsl:value-of select="@column2"/>" );
+  return column;
 }
 
 QString <xsl:value-of select="$className"/>::rightFullColumnName()
 {
-  return tableName() + QLatin1String( "." ) + rightColumn();
+  static const QString column = QLatin1String( "<xsl:value-of select="$tableName"/>.<xsl:value-of select="@table2"/>_<xsl:value-of select="@column2"/>" );
+  return column;
 }
 </xsl:template>
 

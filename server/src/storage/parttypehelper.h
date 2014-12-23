@@ -48,17 +48,12 @@ namespace PartTypeHelper
   PartType fromFqName( const QByteArray &fqName );
 
   /**
-   * Retrieve (or create) PartType for the given namespace and type name.
+   * Retrieve (or create) PartType for the given namespace and name
    * @param ns Namespace
-   * @param typeName Part type name.
+   * @param name Name
    * @throws PartTypeException
    */
-  PartType fromName( const QString &ns, const QString &typeName );
-
-  /**
-   * Convenience overload of the above.
-   */
-  PartType fromName( const char *ns, const char *typeName );
+  PartType fromFqName( const QString &ns, const QString &name );
 
   /**
    * Returns a query condition that matches the given part.
