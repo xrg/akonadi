@@ -77,7 +77,7 @@ void ItemRetrievalJob::callFinished( const QString &errorMsg )
   if ( m_active ) {
     m_active = false;
     if ( !errorMsg.isEmpty() ) {
-      Q_EMIT requestCompleted( m_request, QString::fromLatin1( "Unable to retrieve item from resource: %1" ).arg( errorMsg ) );
+      Q_EMIT requestCompleted( m_request, QString::fromLatin1( "Retrieve item finished with error: %1" ).arg( errorMsg ) );
     } else {
       Q_EMIT requestCompleted( m_request, QString() );
     }

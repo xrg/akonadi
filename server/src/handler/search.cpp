@@ -145,7 +145,12 @@ void Search::searchNepomuk()
   uids = service->search( queryString );
   delete service;
 #else
-  akError() << "Akonadi has been built without Nepomuk support!";
+  static bool errorShown = false;
+  if (!errorShown)
+  {
+        akError() << "Akonadi has been built without Nepomuk support!";
+        errorShown = true;
+  }
   return;
 #endif
 
